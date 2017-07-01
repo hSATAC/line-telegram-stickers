@@ -1,0 +1,12 @@
+hash: f3218056b032e88a3d3dc88de6f21609057e55d20d57983d1ebbd5f66cd8a407
+updated: 2017-07-01T19:52:08.052734306+08:00
+imports:
+- name: github.com/disintegration/imaging
+  version: ac27d1805a555e1754fa177216ee07f4e63c30b5
+- name: golang.org/x/image
+  version: 426cfd8eeb6e08ab1932954e09e3c2cb2bc6e36d
+  subpackages:
+  - bmp
+  - tiff
+  - tiff/lzw
+testImports: []

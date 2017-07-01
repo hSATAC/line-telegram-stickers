@@ -1,2 +1,3 @@
-package: .
-import: []
+package: github.com/hSATAC/line-telegram-stickers
+import:
+- package: github.com/disintegration/imaging
