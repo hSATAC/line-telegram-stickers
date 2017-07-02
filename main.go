@@ -1,32 +1,25 @@
 package main
 
 import (
-	"./mtproto"
 	"fmt"
 	"os"
 	"strconv"
+
+	"./mtproto"
 )
 
 func usage() {
-	fmt.Print("Telegram is a simple MTProto tool.\n\nUsage:\n\n")
-	fmt.Print("    ./telegram <command> [arguments]\n\n")
+	fmt.Print("Move Line stickers to Telegram.\n\nUsage:\n\n")
+	fmt.Print("    line-telegram-stickers <command> [arguments]\n\n")
 	fmt.Print("The commands are:\n\n")
 	fmt.Print("    auth  <phone_number>            auth connection by code\n")
-	fmt.Print("    msg	<peer_id> <msgtext>        send message to user\n")
-	fmt.Print("    sendmedia <peer_id> <file>      send media file to user\n")
-	fmt.Print("    list                            get contact list\n")
-	fmt.Print("    dialogs                         get dialogs\n")
-	fmt.Print("    contacts_search                 search contact by pattern\n")
+	fmt.Print("    move	<line_pack_id>             move Line sticker pack to telegram\n")
 	fmt.Println()
 }
 
 var commands = map[string]int{
-	"auth":      1,
-	"msg":       2,
-	"sendmedia": 2,
-	"list":      0,
-	"dialogs":   0,
-	"contacts_search": 2,
+	"auth": 1,
+	"move": 1,
 }
 
 func main() {
@@ -54,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	m, err := mtproto.NewMTProto(os.Getenv("HOME") + "/.telegram_go")
+	m, err := mtproto.NewMTProto(os.Getenv("HOME") + "/.line-telegram-stickers")
 	if err != nil {
 		fmt.Printf("Create failed: %s\n", err)
 		os.Exit(2)
@@ -68,18 +61,29 @@ func main() {
 	switch os.Args[1] {
 	case "auth":
 		err = m.Auth(os.Args[2])
-	case "msg":
-		err = m.SendMsg(os.Args[2], os.Args[3])
-	case "list":
-		err = m.GetContacts()
-	case "dialogs":
-		err = m.GetChats()
-	case "sendmedia":
-		err = m.SendMedia(os.Args[2], os.Args[3])
-	case "contacts_search":
-		pattern := string(os.Args[2])
-		limit, _ := strconv.Atoi(os.Args[3])
-		err = m.SearchContacts(pattern, int32(limit))		
+	case "move":
+		packID, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(2)
+		}
+
+		// Try connection before all operations
+		_, err = m.GetForeignPeer("@Stickers")
+		if err != nil {
+			if err.Error() == "RPC: mtproto.TL_rpc_error{error_code:401, error_message:\"AUTH_KEY_UNREGISTERED\"}" {
+				fmt.Println("Please run `line-telegram-stickers auth` before move stickers.")
+			} else {
+				fmt.Printf("Connection to telegram error: %s\n", err)
+			}
+			os.Exit(2)
+		}
+		packName := fmt.Sprintf("line_telegram_stickers_%d", packID)
+		// download pack
+		dir := downloadAndFilterPack(packID)
+		defer os.RemoveAll(dir)
+		// upload pack
+		uploadPack(m, packName, dir)
 	}
 
 	if err != nil {

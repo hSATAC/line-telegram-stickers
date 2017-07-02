@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/disintegration/imaging"
 	"io"
 	"io/ioutil"
 	"log"
@@ -11,31 +10,34 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/disintegration/imaging"
 )
 
-func main() {
+func downloadAndFilterPack(packID int) string {
 	file, err := ioutil.TempFile(os.TempDir(), "line-telegram-stickers-pack")
 	if err != nil {
 		fmt.Println("Error while creating", file, "-", err)
-		return
+		return ""
 	}
 	defer os.Remove(file.Name())
 	fmt.Println("Temp File created!")
 
-	downloadLinePack(3333, file)
+	downloadLinePack(packID, file)
 
 	dir, err := ioutil.TempDir(os.TempDir(), "line-telegram-stickers-pack")
 	if err != nil {
 		fmt.Println("Error while creating", dir, "-", err)
-		return
+		return ""
 	}
 
 	fmt.Println("Unzip to", dir)
 	unzip(file.Name(), dir)
 
-	//dir := "/var/folders/q7/bcn45hls729bj9dncgfyv5d80000gn/T/line-telegram-stickers-pack612988553"
 	filterFileInDir(dir)
 	resizeFileInDir(dir)
+
+	return dir
 }
 
 func resizeFileInDir(dir string) {

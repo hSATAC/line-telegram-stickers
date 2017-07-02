@@ -2,8 +2,8 @@ package mtproto
 
 import (
 	"crypto/md5"
-	"fmt"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -351,11 +351,6 @@ func parsePeerById(str_id string) (peer TL, err error) {
 			if err == nil {
 				peer = TL_inputPeerContact{int32(id)}
 			}
-		} else if str_id[0:1] == "!" {
-			id, err := strconv.Atoi(str_id[1:])
-			if err == nil {
-				peer = TL_inputPeerForeign{int32(id), 3114214148610114909}
-			}
 		} else {
 			id, err := strconv.Atoi(str_id)
 			if err == nil {
@@ -365,9 +360,7 @@ func parsePeerById(str_id string) (peer TL, err error) {
 	} else {
 		peer = TL_inputPeerSelf{}
 	}
-	fmt.Println("======================")
-	fmt.Println(peer)
-	fmt.Println(err)
+
 	return peer, err
 }
 
@@ -379,7 +372,7 @@ func (m *MTProto) SearchContacts(q string, limit int32) error {
 	if !ok {
 		return fmt.Errorf("RPC: %#v", x)
 	}
-	
+
 	contacts := make(map[int32]TL_userContact)
 	for _, v := range list.users {
 		if v, ok := v.(TL_userContact); ok {
@@ -390,12 +383,25 @@ func (m *MTProto) SearchContacts(q string, limit int32) error {
 	for _, v := range list.users {
 		v := v.(TL_userForeign)
 		fmt.Printf(
-			"%-20s %30s %10d %20s\n",
-			"@" + v.username,
+			"%-20s %30s %10d %10d\n",
+			"@"+v.username,
 			v.first_name, v.id, v.access_hash)
 	}
 
 	return nil
+}
+
+func (m *MTProto) GetForeignPeer(q string) (TL_inputPeerForeign, error) {
+	resp := make(chan TL, 1)
+	m.queueSend <- packetToSend{TL_contacts_search{q, 1}, resp}
+	x := <-resp
+	list, ok := x.(TL_contacts_found)
+	if !ok {
+		return TL_inputPeerForeign{}, fmt.Errorf("RPC: %#v", x)
+	}
+	foreign := list.users[0].(TL_userForeign)
+	peer := TL_inputPeerForeign{foreign.id, foreign.access_hash}
+	return peer, nil
 }
 
 func (m *MTProto) SendMsg(peer_id string, msg string) error {
@@ -418,9 +424,27 @@ func (m *MTProto) SendMsg(peer_id string, msg string) error {
 	return nil
 }
 
-func (m *MTProto) SendMedia(peer_id string, file string) (err error) {
+func (m *MTProto) SendMsgToForeignPeer(peer TL_inputPeerForeign, msg string) error {
+	resp := make(chan TL, 1)
+	m.queueSend <- packetToSend{
+		TL_messages_sendMessage{
+			peer,
+			msg,
+			rand.Int63(),
+		},
+		resp,
+	}
+	x := <-resp
+	_, ok := x.(TL_messages_sentMessage)
+	if !ok {
+		return fmt.Errorf("RPC: %#v", x)
+	}
+
+	return nil
+}
+
+func (m *MTProto) SendMediaDocumentToForeignPeer(peer TL_inputPeerForeign, file string) (err error) {
 	_512k := 512 * 1024
-	peer, _ := parsePeerById(peer_id)
 	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("Error to read file: %#v", err)
@@ -430,7 +454,7 @@ func (m *MTProto) SendMedia(peer_id string, file string) (err error) {
 	parts := int32(len(bytes)/_512k) + 1
 	start := 0
 	for i := int32(0); i < parts; i++ {
-		fmt.Println(i, "/", parts)
+		//fmt.Println(i, "/", parts)
 		resp := make(chan TL, 1)
 		end := start + _512k
 		if end > len(bytes) {
@@ -464,9 +488,7 @@ func (m *MTProto) SendMedia(peer_id string, file string) (err error) {
 					md5_hash,
 				},
 				"image/png",
-				[]TL{
-					
-				},
+				[]TL{},
 			},
 			rand.Int63(),
 		},
