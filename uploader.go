@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"./mtproto"
+	"github.com/hSATAC/line-telegram-stickers/mtproto"
 )
 
 func uploadPack(m *mtproto.MTProto, packName string, dir string) {

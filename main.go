@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"./mtproto"
+	"github.com/hSATAC/line-telegram-stickers/mtproto"
 )
 
 func usage() {
